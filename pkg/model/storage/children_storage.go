@@ -17,10 +17,22 @@ type CachedChild struct {
 
 type CachedChildren []*CachedChild
 
+func (cachedChildren CachedChildren) Retain() CachedChildren {
+	cachedResult := make(CachedChildren, len(cachedChildren))
+	for i, cachedChild := range cachedChildren {
+		cachedResult[i] = cachedChild.Retain()
+	}
+	return cachedResult
+}
+
 func (cachedChildren CachedChildren) Release(force ...bool) {
 	for _, cachedChild := range cachedChildren {
 		cachedChild.Release(force...)
 	}
+}
+
+func (c *CachedChild) Retain() *CachedChild {
+	return &CachedChild{c.CachedObject.Retain()}
 }
 
 func (c *CachedChild) GetChild() *Child {
@@ -83,6 +95,17 @@ func (s *Storage) ContainsChild(messageID hornet.MessageID, childMessageID horne
 
 // ChildConsumer consumes the given child during looping through all children in the persistence layer.
 type ChildConsumer func(messageID hornet.MessageID, childMessageID hornet.MessageID) bool
+
+// GetCachedChildrenOfMessageID returns the cached children of a message.
+// children +1
+func (s *Storage) GetCachedChildrenOfMessageID(messageID hornet.MessageID) CachedChildren {
+	cachedChildren := make(CachedChildren, 0)
+	s.childrenStorage.ForEach(func(key []byte, cachedObject objectstorage.CachedObject) bool {
+		cachedChildren = append(cachedChildren, &CachedChild{CachedObject: cachedObject})
+		return true
+	}, messageID)
+	return cachedChildren
+}
 
 // ForEachChild loops over all children.
 func (s *Storage) ForEachChild(consumer ChildConsumer, skipCache bool) {

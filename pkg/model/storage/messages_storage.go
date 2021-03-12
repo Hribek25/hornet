@@ -302,27 +302,32 @@ func (s *Storage) FlushMessagesStorage() {
 }
 
 // msg +1
-func (s *Storage) AddMessageToStorage(message *Message, latestMilestoneIndex milestone.Index, requested bool, forceRelease bool, reapply bool) (cachedMessage *CachedMessage, alreadyAdded bool) {
+func (s *Storage) AddMessageToStorage(message *Message, latestMilestoneIndex milestone.Index, requestIndex milestone.Index, forceRelease bool, reapply bool) (cachedMessage *CachedMessage, alreadyAdded bool) {
 
 	cachedMessage, isNew := s.StoreMessageIfAbsent(message) // msg +1
 	if !isNew && !reapply {
 		return cachedMessage, true
 	}
 
-	for _, parent := range message.GetParents() {
-		s.StoreChild(parent, cachedMessage.GetMessage().GetMessageID()).Release(forceRelease)
+	parents := message.GetParents()
+	cachedChildren := make(CachedChildren, len(parents))
+	for i, parent := range parents {
+		cachedChildren[i] = s.StoreChild(parent, cachedMessage.GetMessage().GetMessageID())
 	}
+
+	if requestIndex != 0 {
+		s.Events.CachedMessageRequestedAndStored.Trigger(requestIndex, cachedMessage, cachedChildren)
+	} else {
+		// Store only non-requested messages, since all requested messages are referenced by a milestone anyway
+		// This is only used to delete unreferenced messages from the database at pruning
+		s.StoreUnreferencedMessage(latestMilestoneIndex, cachedMessage.GetMessage().GetMessageID()).Release(true)
+	}
+	cachedChildren.Release(forceRelease)
 
 	indexationPayload := CheckIfIndexation(cachedMessage.GetMessage())
 	if indexationPayload != nil {
 		// store indexation if the message contains an indexation payload
 		s.StoreIndexation(indexationPayload.Index, cachedMessage.GetMessage().GetMessageID()).Release(true)
-	}
-
-	// Store only non-requested messages, since all requested messages are referenced by a milestone anyway
-	// This is only used to delete unreferenced messages from the database at pruning
-	if !requested {
-		s.StoreUnreferencedMessage(latestMilestoneIndex, cachedMessage.GetMessage().GetMessageID()).Release(true)
 	}
 
 	if ms := s.VerifyMilestone(message); ms != nil {

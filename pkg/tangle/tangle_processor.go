@@ -159,8 +159,13 @@ func (t *Tangle) processIncomingTx(incomingMsg *storage.Message, request *gossip
 	latestMilestoneIndex := t.storage.GetLatestMilestoneIndex()
 	isNodeSyncedWithThreshold := t.storage.IsNodeSyncedWithThreshold()
 
+	var requestIndex milestone.Index = 0
+	if request != nil {
+		requestIndex = request.MilestoneIndex
+	}
+
 	// The msg will be added to the storage inside this function, so the message object automatically updates
-	cachedMsg, alreadyAdded := t.storage.AddMessageToStorage(incomingMsg, latestMilestoneIndex, request != nil, !isNodeSyncedWithThreshold, false) // msg +1
+	cachedMsg, alreadyAdded := t.storage.AddMessageToStorage(incomingMsg, latestMilestoneIndex, requestIndex, !isNodeSyncedWithThreshold, false) // msg +1
 
 	// Release shouldn't be forced, to cache the latest messages
 	defer cachedMsg.Release(!isNodeSyncedWithThreshold) // msg -1

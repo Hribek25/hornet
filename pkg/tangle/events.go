@@ -43,7 +43,9 @@ type pluginEvents struct {
 	ReceivedKnownMessage           *events.Event
 	ProcessedMessage               *events.Event
 	MessageSolid                   *events.Event
+	CachedMessageSolid             *events.Event
 	MessageReferenced              *events.Event
+	CachedMetadataReferenced       *events.Event
 	ReceivedNewMilestone           *events.Event
 	LatestMilestoneChanged         *events.Event
 	LatestMilestoneIndexChanged    *events.Event
