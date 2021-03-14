@@ -67,7 +67,7 @@ func (s *Storage) GetUnreferencedMessageIDs(msIndex milestone.Index, forceReleas
 	s.unreferencedMessagesStorage.ForEachKeyOnly(func(key []byte) bool {
 		unreferencedMessageIDs = append(unreferencedMessageIDs, hornet.MessageIDFromSlice(key[4:36]))
 		return true
-	}, false, key)
+	}, key)
 
 	return unreferencedMessageIDs
 }
@@ -77,9 +77,15 @@ type UnreferencedMessageConsumer func(msIndex milestone.Index, messageID hornet.
 
 // ForEachUnreferencedMessage loops over all unreferenced messages.
 func (s *Storage) ForEachUnreferencedMessage(consumer UnreferencedMessageConsumer, skipCache bool) {
+	if skipCache {
+		s.unreferencedMessagesStorage.ForEachKeyOnlyStored(func(key []byte) bool {
+			return consumer(milestone.Index(binary.LittleEndian.Uint32(key[:4])), hornet.MessageIDFromSlice(key[4:36]))
+		})
+		return
+	}
 	s.unreferencedMessagesStorage.ForEachKeyOnly(func(key []byte) bool {
 		return consumer(milestone.Index(binary.LittleEndian.Uint32(key[:4])), hornet.MessageIDFromSlice(key[4:36]))
-	}, skipCache)
+	})
 }
 
 // unreferencedTx +1
@@ -99,7 +105,7 @@ func (s *Storage) DeleteUnreferencedMessages(msIndex milestone.Index) int {
 	s.unreferencedMessagesStorage.ForEachKeyOnly(func(key []byte) bool {
 		keysToDelete = append(keysToDelete, key)
 		return true
-	}, false, msIndexBytes)
+	}, msIndexBytes)
 
 	for _, key := range keysToDelete {
 		s.unreferencedMessagesStorage.Delete(key)

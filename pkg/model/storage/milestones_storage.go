@@ -139,14 +139,14 @@ func (s *Storage) ContainsMilestone(milestoneIndex milestone.Index) bool {
 func (s *Storage) SearchLatestMilestoneIndexInStore() milestone.Index {
 	var latestMilestoneIndex milestone.Index
 
-	s.milestoneStorage.ForEachKeyOnly(func(key []byte) bool {
+	s.milestoneStorage.ForEachKeyOnlyStored(func(key []byte) bool {
 		msIndex := milestoneIndexFromDatabaseKey(key)
 		if latestMilestoneIndex < msIndex {
 			latestMilestoneIndex = msIndex
 		}
 
 		return true
-	}, true)
+	})
 
 	return latestMilestoneIndex
 }
@@ -156,9 +156,15 @@ type MilestoneIndexConsumer func(index milestone.Index) bool
 
 // ForEachMilestoneIndex loops through all milestones in the persistence layer.
 func (s *Storage) ForEachMilestoneIndex(consumer MilestoneIndexConsumer, skipCache bool) {
+	if skipCache {
+		s.milestoneStorage.ForEachKeyOnlyStored(func(key []byte) bool {
+			return consumer(milestoneIndexFromDatabaseKey(key))
+		})
+		return
+	}
 	s.milestoneStorage.ForEachKeyOnly(func(key []byte) bool {
 		return consumer(milestoneIndexFromDatabaseKey(key))
-	}, skipCache)
+	})
 }
 
 // milestone +1

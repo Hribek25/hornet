@@ -267,16 +267,28 @@ type MessageIDConsumer func(messageID hornet.MessageID) bool
 
 // ForEachMessageID loops over all message IDs.
 func (s *Storage) ForEachMessageID(consumer MessageIDConsumer, skipCache bool) {
+	if skipCache {
+		s.messagesStorage.ForEachKeyOnlyStored(func(messageID []byte) bool {
+			return consumer(hornet.MessageIDFromSlice(messageID))
+		})
+		return
+	}
 	s.messagesStorage.ForEachKeyOnly(func(messageID []byte) bool {
 		return consumer(hornet.MessageIDFromSlice(messageID))
-	}, skipCache)
+	})
 }
 
 // ForEachMessageMetadataMessageID loops over all message metadata message IDs.
 func (s *Storage) ForEachMessageMetadataMessageID(consumer MessageIDConsumer, skipCache bool) {
+	if skipCache {
+		s.metadataStorage.ForEachKeyOnlyStored(func(messageID []byte) bool {
+			return consumer(hornet.MessageIDFromSlice(messageID))
+		})
+		return
+	}
 	s.metadataStorage.ForEachKeyOnly(func(messageID []byte) bool {
 		return consumer(hornet.MessageIDFromSlice(messageID))
-	}, skipCache)
+	})
 }
 
 // DeleteMessage deletes the message and metadata in the cache/persistence layer.
