@@ -7,12 +7,14 @@ import (
 	"go.uber.org/dig"
 
 	"github.com/gohornet/hornet/pkg/database"
+	"github.com/gohornet/hornet/pkg/metrics"
 	"github.com/gohornet/hornet/pkg/model/storage"
 	"github.com/gohornet/hornet/pkg/model/utxo"
 	"github.com/gohornet/hornet/pkg/node"
 	"github.com/gohornet/hornet/pkg/profile"
 	"github.com/gohornet/hornet/pkg/shutdown"
 	"github.com/iotaledger/hive.go/configuration"
+	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/kvstore"
 	"github.com/iotaledger/hive.go/kvstore/badger"
 	"github.com/iotaledger/hive.go/kvstore/bolt"
@@ -45,18 +47,44 @@ type dependencies struct {
 	dig.In
 	Store   kvstore.KVStore
 	Storage *storage.Storage
+	Events  *Events
 }
 
 func provide(c *dig.Container) {
+
+	if err := c.Provide(func() *metrics.DatabaseMetrics {
+		return &metrics.DatabaseMetrics{}
+	}); err != nil {
+		panic(err)
+	}
+
+	if err := c.Provide(func() *Events {
+		return &Events{
+			DatabaseCleanup:    events.NewEvent(DatabaseCleanupCaller),
+			DatabaseCompaction: events.NewEvent(DatabaseCompactionCaller),
+		}
+	}); err != nil {
+		panic(err)
+	}
+
 	type pebbledeps struct {
 		dig.In
 		NodeConfig *configuration.Configuration `name:"nodeConfig"`
+		Events     *Events
+		Metrics    *metrics.DatabaseMetrics
 	}
 
 	if err := c.Provide(func(deps pebbledeps) kvstore.KVStore {
 		switch deps.NodeConfig.String(CfgDatabaseEngine) {
 		case "pebble":
-			return pebble.New(database.NewPebbleDB(deps.NodeConfig.String(CfgDatabasePath), nil))
+			reportCompactionRunning := func(running bool) {
+				deps.Metrics.CompactionRunning.Store(running)
+				if running {
+					deps.Metrics.Compactions.Inc()
+				}
+				deps.Events.DatabaseCompaction.Trigger(running)
+			}
+			return pebble.New(database.NewPebbleDB(deps.NodeConfig.String(CfgDatabasePath), reportCompactionRunning))
 		case "bolt":
 			return bolt.New(database.NewBoltDB(deps.NodeConfig.String(CfgDatabasePath), "tangle.db"))
 		case "badger":
@@ -119,7 +147,7 @@ func RunGarbageCollection() {
 
 	start := time.Now()
 
-	Events.DatabaseCleanup.Trigger(&DatabaseCleanup{
+	deps.Events.DatabaseCleanup.Trigger(&DatabaseCleanup{
 		Start: start,
 	})
 
@@ -127,7 +155,7 @@ func RunGarbageCollection() {
 
 	end := time.Now()
 
-	Events.DatabaseCleanup.Trigger(&DatabaseCleanup{
+	deps.Events.DatabaseCleanup.Trigger(&DatabaseCleanup{
 		Start: start,
 		End:   end,
 	})
