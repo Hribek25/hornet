@@ -125,7 +125,7 @@ func benchmarkIO(args []string) error {
 
 	switch dbEngine {
 	case "pebble":
-		store = pebble.New(database.NewPebbleDB(tempDir, false))
+		store = pebble.New(database.NewPebbleDB(tempDir, nil))
 	case "bolt":
 		store = bolt.New(database.NewBoltDB(tempDir, "bolt.db"))
 	case "badger":

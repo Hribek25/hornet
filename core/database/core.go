@@ -56,7 +56,7 @@ func provide(c *dig.Container) {
 	if err := c.Provide(func(deps pebbledeps) kvstore.KVStore {
 		switch deps.NodeConfig.String(CfgDatabaseEngine) {
 		case "pebble":
-			return pebble.New(database.NewPebbleDB(deps.NodeConfig.String(CfgDatabasePath), false))
+			return pebble.New(database.NewPebbleDB(deps.NodeConfig.String(CfgDatabasePath), nil))
 		case "bolt":
 			return bolt.New(database.NewBoltDB(deps.NodeConfig.String(CfgDatabasePath), "tangle.db"))
 		case "badger":
