@@ -26,6 +26,7 @@ type packageEvents struct {
 	ReceivedValidMilestoneMessage   *events.Event
 	ReceivedValidMilestone          *events.Event
 	CachedMessageRequestedAndStored *events.Event
+	PruningStateChanged             *events.Event
 }
 
 type Storage struct {
@@ -91,6 +92,7 @@ func New(databaseDirectory string, store kvstore.KVStore, cachesProfile *profile
 			ReceivedValidMilestoneMessage:   events.NewEvent(MessageCaller),
 			ReceivedValidMilestone:          events.NewEvent(MilestoneCaller),
 			CachedMessageRequestedAndStored: events.NewEvent(CachedMessageCaller),
+			PruningStateChanged:             events.NewEvent(events.BoolCaller),
 		},
 	}
 
