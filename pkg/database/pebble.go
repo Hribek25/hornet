@@ -94,7 +94,7 @@ func NewPebbleDB(directory string, reportCompactionRunning func(running bool)) *
 	// compaction up to MaxConcurrentCompactions.
 	//
 	// The default value is 10.
-	opts.Experimental.L0CompactionConcurrency = 10
+	opts.Experimental.L0CompactionConcurrency = 100
 
 	// CompactionDebtConcurrency controls the threshold of compaction debt
 	// at which additional compaction concurrency slots are added. For every
@@ -104,7 +104,7 @@ func NewPebbleDB(directory string, reportCompactionRunning func(running bool)) *
 	// concurrency slots as determined by the two options is chosen.
 	//
 	// The default value is 1 GB.
-	opts.Experimental.CompactionDebtConcurrency = 1 << 30 // 1 GB
+	opts.Experimental.CompactionDebtConcurrency = 10 << 30 // 10 GB
 
 	// DeleteRangeFlushDelay configures how long the database should wait
 	// before forcing a flush of a memtable that contains a range
@@ -150,7 +150,7 @@ func NewPebbleDB(directory string, reportCompactionRunning func(running bool)) *
 	// ```
 	//
 	// The default value is 16000.
-	opts.Experimental.ReadCompactionRate = 16000
+	opts.Experimental.ReadCompactionRate = 1
 
 	// ReadSamplingMultiplier is a multiplier for the readSamplingPeriod in
 	// iterator.maybeSampleRead() to control the frequency of read sampling
@@ -185,7 +185,7 @@ func NewPebbleDB(directory string, reportCompactionRunning func(running bool)) *
 	// it is measured against the number of files in L0.
 	//
 	// The default value is 12.
-	opts.L0StopWritesThreshold = 50
+	opts.L0StopWritesThreshold = 200
 
 	// The maximum number of bytes for LBase. The base level is the level which
 	// L0 is compacted into. The base level is determined dynamically based on
