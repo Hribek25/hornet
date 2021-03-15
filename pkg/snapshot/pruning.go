@@ -25,7 +25,7 @@ func (s *Snapshot) pruneUnreferencedMessages(targetIndex milestone.Index) (msgCo
 	messageIDsToDeleteMap := make(map[string]struct{})
 
 	// Check if message is still unreferenced
-	for _, messageID := range s.storage.GetUnreferencedMessageIDs(targetIndex, true) {
+	for _, messageID := range s.storage.GetUnreferencedMessageIDs(targetIndex) {
 		messageIDMapKey := messageID.ToMapKey()
 		if _, exists := messageIDsToDeleteMap[messageIDMapKey]; exists {
 			continue
@@ -165,8 +165,9 @@ func (s *Snapshot) pruneDatabase(targetIndex milestone.Index, abortSignal <-chan
 
 		s.log.Infof("Pruning milestone (%d)...", milestoneIndex)
 
-		ts := time.Now()
+		timeStart := time.Now()
 		txCountDeleted, msgCountChecked := s.pruneUnreferencedMessages(milestoneIndex)
+		timePruneUnreferencedMessages := time.Now()
 
 		cachedMs := s.storage.GetCachedMilestoneOrNil(milestoneIndex) // milestone +1
 		if cachedMs == nil {
@@ -199,6 +200,7 @@ func (s *Snapshot) pruneDatabase(targetIndex milestone.Index, abortSignal <-chan
 			// the pruning target index is also a solid entry point => traverse it anyways
 			true,
 			nil)
+		timeTraverseParentsOfMessage := time.Now()
 
 		cachedMs.Release(true) // milestone -1
 		if err != nil {
@@ -222,18 +224,46 @@ func (s *Snapshot) pruneDatabase(targetIndex milestone.Index, abortSignal <-chan
 		if err := s.pruneMilestone(milestoneIndex, migratedAtIndex...); err != nil {
 			s.log.Warnf("Pruning milestone (%d) failed! %s", milestoneIndex, err)
 		}
+		timePruneMilestone := time.Now()
 
 		cachedMsMsg.Release(true) // milestone msg -1
 
 		msgCountChecked += len(messageIDsToDeleteMap)
 		txCountDeleted += s.pruneMessages(messageIDsToDeleteMap)
+		timePruneMessages := time.Now()
 
 		snapshotInfo.PruningIndex = milestoneIndex
 		s.storage.SetSnapshotInfo(snapshotInfo)
+		timeSetSnapshotInfo := time.Now()
 
-		s.log.Infof("Pruning milestone (%d) took %v. Pruned %d/%d messages. ", milestoneIndex, time.Since(ts).Truncate(time.Millisecond), txCountDeleted, msgCountChecked)
+		s.log.Infof("Pruning milestone (%d) took %v. Pruned %d/%d messages. ", milestoneIndex, time.Since(timeStart).Truncate(time.Millisecond), txCountDeleted, msgCountChecked)
 
 		s.tangle.Events.PruningMilestoneIndexChanged.Trigger(milestoneIndex)
+		timePruningMilestoneIndexChanged := time.Now()
+
+		durationPruneUnreferencedMessages := timePruneUnreferencedMessages.Sub(timeStart)
+		durationTraverseParentsOfMessage := timeTraverseParentsOfMessage.Sub(timePruneUnreferencedMessages)
+		durationPruneMilestone := timePruneMilestone.Sub(timeTraverseParentsOfMessage)
+		durationPruneMessages := timePruneMessages.Sub(timePruneMilestone)
+		durationSetSnapshotInfo := timeSetSnapshotInfo.Sub(timePruneMessages)
+		durationPruningMilestoneIndexChanged := timePruningMilestoneIndexChanged.Sub(timeSetSnapshotInfo)
+		durationTotal := time.Since(timeStart)
+
+		s.log.Debugf(`Additional pruning stats:
+	DurationPruneUnreferencedMessages: %v
+	DurationTraverseParentsOfMessage: %v
+	DurationPruneMilestone: %v
+	DurationPruneMessages: %v
+	DurationSetSnapshotInfo: %v
+	DurationPruningMilestoneIndexChanged: %v
+	DurationTotal: %v`,
+			durationPruneUnreferencedMessages.Truncate(time.Millisecond),
+			durationTraverseParentsOfMessage.Truncate(time.Millisecond),
+			durationPruneMilestone.Truncate(time.Millisecond),
+			durationPruneMessages.Truncate(time.Millisecond),
+			durationSetSnapshotInfo.Truncate(time.Millisecond),
+			durationPruningMilestoneIndexChanged.Truncate(time.Millisecond),
+			durationTotal.Truncate(time.Millisecond))
 	}
 
 	database.RunGarbageCollection()
