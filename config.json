@@ -48,7 +48,8 @@
   },
   "db": {
     "engine": "pebble",
-    "path": "mainnetdb"
+    "path": "mainnetdb",
+    "enableFilter": true
   },
   "snapshots": {
     "intervalSynced": 50,

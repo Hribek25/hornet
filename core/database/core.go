@@ -86,20 +86,22 @@ func provide(c *dig.Container) {
 	}
 
 	if err := c.Provide(func(deps pebbledeps) kvstore.KVStore {
+
+		reportCompactionRunning := func(running bool) {
+			deps.Metrics.CompactionRunning.Store(running)
+			if running {
+				deps.Metrics.Compactions.Inc()
+			}
+			deps.Events.DatabaseCompaction.Trigger(running)
+		}
+
 		switch deps.NodeConfig.String(CfgDatabaseEngine) {
 		case "pebble":
-			reportCompactionRunning := func(running bool) {
-				deps.Metrics.CompactionRunning.Store(running)
-				if running {
-					deps.Metrics.Compactions.Inc()
-				}
-				deps.Events.DatabaseCompaction.Trigger(running)
-			}
-			return pebble.New(database.NewPebbleDB(deps.NodeConfig.String(CfgDatabasePath), reportCompactionRunning))
+			return pebble.New(database.NewPebbleDB(deps.NodeConfig.String(CfgDatabasePath), reportCompactionRunning, deps.NodeConfig.Bool(CfgDatabaseEnableFilter)))
 		case "bolt":
 			return bolt.New(database.NewBoltDB(deps.NodeConfig.String(CfgDatabasePath), "tangle.db"))
 		case "badger":
-			return badger.New(database.NewBadgerDB(deps.NodeConfig.String(CfgDatabasePath)))
+			return badger.New(database.NewBadgerDB(deps.NodeConfig.String(CfgDatabasePath), reportCompactionRunning, deps.NodeConfig.Bool(CfgDatabaseEnableFilter)))
 		default:
 			panic(fmt.Sprintf("unknown database engine: %s, supported engines: pebble/bolt/badger", deps.NodeConfig.String(CfgDatabaseEngine)))
 		}

@@ -11,6 +11,8 @@ const (
 	CfgDatabaseEngine = "db.engine"
 	// the path to the database folder
 	CfgDatabasePath = "db.path"
+	// whether to enable the filter to check for existence of database entries
+	CfgDatabaseEnableFilter = "db.enableFilter"
 	// ignore the check for corrupted databases (should only be used for debug reasons)
 	CfgDatabaseDebug = "db.debug"
 )
@@ -21,6 +23,7 @@ var params = &node.PluginParams{
 			fs := flag.NewFlagSet("", flag.ContinueOnError)
 			fs.String(CfgDatabaseEngine, "pebble", "the used database engine (pebble/bolt/badger)")
 			fs.String(CfgDatabasePath, "mainnetdb", "the path to the database folder")
+			fs.Bool(CfgDatabaseEnableFilter, false, "whether to enable the filter to check for existence of database entries")
 			fs.Bool(CfgDatabaseDebug, false, "ignore the check for corrupted databases (should only be used for debug reasons)")
 			return fs
 		}(),
