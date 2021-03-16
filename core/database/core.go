@@ -102,6 +102,8 @@ func provide(c *dig.Container) {
 			return bolt.New(database.NewBoltDB(deps.NodeConfig.String(CfgDatabasePath), "tangle.db"))
 		case "badger":
 			return badger.New(database.NewBadgerDB(deps.NodeConfig.String(CfgDatabasePath), reportCompactionRunning, deps.NodeConfig.Bool(CfgDatabaseEnableFilter)))
+		case "rocksdb":
+			return database.NewRocksDBStore(database.NewRocksDB(deps.NodeConfig.String(CfgDatabasePath)))
 		default:
 			panic(fmt.Sprintf("unknown database engine: %s, supported engines: pebble/bolt/badger", deps.NodeConfig.String(CfgDatabaseEngine)))
 		}
