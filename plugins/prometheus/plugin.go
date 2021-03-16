@@ -143,7 +143,6 @@ func run() {
 		e := echo.New()
 		e.HideBanner = true
 		e.Use(middleware.Recover())
-		e.Use(middleware.Gzip())
 
 		e.GET(RouteMetrics, func(c echo.Context) error {
 			for _, collect := range collects {
