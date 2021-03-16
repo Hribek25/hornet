@@ -90,8 +90,12 @@ func (c *TangleCache) ReleaseCachedMessages(msIndex milestone.Index, forceReleas
 	c.Lock()
 	defer c.Unlock()
 
-	cachedMessages, exists := c.cachedMsgs[msIndex]
-	if exists {
+	for index, cachedMessages := range c.cachedMsgs {
+		if index > msIndex {
+			// only release entries that belong to older milestones
+			continue
+		}
+
 		for _, cachedMsg := range cachedMessages {
 			cachedMsg.Release(forceRelease...)
 		}
@@ -103,8 +107,12 @@ func (c *TangleCache) ReleaseCachedMetadata(msIndex milestone.Index, forceReleas
 	c.Lock()
 	defer c.Unlock()
 
-	cachedMsgMetas, exists := c.cachedMsgMetas[msIndex]
-	if exists {
+	for index, cachedMsgMetas := range c.cachedMsgMetas {
+		if index > msIndex {
+			// only release entries that belong to older milestones
+			continue
+		}
+
 		for _, cachedMsgMeta := range cachedMsgMetas {
 			cachedMsgMeta.Release(forceRelease...)
 		}
@@ -116,8 +124,12 @@ func (c *TangleCache) ReleaseCachedChildren(msIndex milestone.Index, forceReleas
 	c.Lock()
 	defer c.Unlock()
 
-	cachedChildren, exists := c.cachedChildren[msIndex]
-	if exists {
+	for index, cachedChildren := range c.cachedChildren {
+		if index > msIndex {
+			// only release entries that belong to older milestones
+			continue
+		}
+
 		for _, cachedChild := range cachedChildren {
 			cachedChild.Release(forceRelease...)
 		}
