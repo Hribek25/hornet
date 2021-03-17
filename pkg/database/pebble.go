@@ -10,7 +10,7 @@ import (
 )
 
 // NewPebbleDB creates a new pebble DB instance.
-func NewPebbleDB(directory string, reportCompactionRunning func(running bool)) *pebbleDB.DB {
+func NewPebbleDB(directory string, reportCompactionRunning func(running bool), enableFilter bool) *pebbleDB.DB {
 	cache := pebbleDB.NewCache(128 << 20) // 128 MB
 	defer cache.Unref()
 
@@ -36,7 +36,9 @@ func NewPebbleDB(directory string, reportCompactionRunning func(running bool)) *
 		// package.
 		//
 		// The default value means to use no filter.
-		l.FilterPolicy = bloom.FilterPolicy(10)
+		if enableFilter {
+			l.FilterPolicy = bloom.FilterPolicy(10)
+		}
 
 		// FilterType defines whether an existing filter policy is applied at a
 		// block-level or table-level. Block-level filters use less memory to create,

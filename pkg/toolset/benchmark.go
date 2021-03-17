@@ -125,11 +125,11 @@ func benchmarkIO(args []string) error {
 
 	switch dbEngine {
 	case "pebble":
-		store = pebble.New(database.NewPebbleDB(tempDir, nil))
+		store = pebble.New(database.NewPebbleDB(tempDir, nil, true))
 	case "bolt":
 		store = bolt.New(database.NewBoltDB(tempDir, "bolt.db"))
 	case "badger":
-		store = badger.New(database.NewBadgerDB(tempDir))
+		store = badger.New(database.NewBadgerDB(tempDir, nil, true))
 	default:
 		return fmt.Errorf("unknown database engine: %s, supported engines: pebble/bolt/badger", dbEngine)
 	}

@@ -8,7 +8,7 @@ import (
 )
 
 // NewBadgerDB creates a new badger DB instance.
-func NewBadgerDB(directory string) *badgerDB.DB {
+func NewBadgerDB(directory string, reportCompactionRunning func(running bool), enableFilter bool) *badgerDB.DB {
 
 	opts := badgerDB.DefaultOptions(directory)
 	opts.Logger = nil
@@ -17,6 +17,10 @@ func NewBadgerDB(directory string) *badgerDB.DB {
 		WithNumMemtables(3).
 		WithValueLogMaxEntries(10000000).
 		WithCompression(options.None)
+
+	if !enableFilter {
+		opts.WithBloomFalsePositive(0)
+	}
 
 	db, err := badger.CreateDB(directory, opts)
 	if err != nil {
